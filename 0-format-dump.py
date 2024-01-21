@@ -12,7 +12,6 @@ https://github.com/LibrariesHacked/openlibrary-search/blob/main/openlibrary-data
 import csv
 import ctypes as ct
 import json
-import os
 
 # Inputs to set
 input_file = "data/dump.txt"
@@ -23,11 +22,6 @@ log_chunk_size = 500_000
 # If file size is too big we get _csv.Error: field larger than field limit (131072)
 # See https://stackoverflow.com/a/54517228 for more info on this.
 csv.field_size_limit(int(ct.c_ulong(-1).value // 2))
-
-
-filename = os.path.basename(input_file).replace(".txt", "")
-outputfile = None
-print("Processing", filename)
 
 
 def process_row(row: list[str]) -> list:
@@ -136,4 +130,6 @@ with open(output_file, "w", encoding="utf-8") as outputfile:
                 csvwriter.writerow(result)
                 i += 1
 
-print("Process complete.")
+print("Process complete:")
+print("    ", linenb, " works processed")
+print("    ", i, " works saved")
