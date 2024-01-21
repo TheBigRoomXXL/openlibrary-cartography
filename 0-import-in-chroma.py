@@ -11,6 +11,7 @@ https://github.com/LibrariesHacked/openlibrary-search/blob/main/openlibrary-data
 
 import csv
 import json
+from ctypes import c_ulong
 from time import perf_counter
 from typing import Union
 
@@ -18,9 +19,13 @@ import chromadb
 
 # Inputs to set
 input_file = "data/dump.txt"
-output_file = "data/0-formated-books.csv"
 log_chunk_size = 5000
-start_line = 120_000
+start_line = 1050000
+
+
+# If file size is too big we get _csv.Error: field larger than field limit (131072)
+# See https://stackoverflow.com/a/54517228 for more info on this.
+csv.field_size_limit(int(c_ulong(-1).value // 2))
 
 
 def process_row(row: list[str]) -> Union[dict, bool]:
