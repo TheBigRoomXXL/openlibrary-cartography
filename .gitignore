@@ -1,3 +1,4 @@
 data/*
 !data/*preview*
 venv/**
+books.chromadb/**

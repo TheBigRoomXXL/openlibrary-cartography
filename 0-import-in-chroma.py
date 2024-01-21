@@ -10,62 +10,63 @@ This script was derived from :
 https://github.com/LibrariesHacked/openlibrary-search/blob/main/openlibrary-data-chunk-process.py"""
 
 import csv
-import ctypes as ct
 import json
+from time import perf_counter
+from typing import Union
+
+import chromadb
 
 # Inputs to set
 input_file = "data/dump.txt"
 output_file = "data/0-formated-books.csv"
-log_chunk_size = 500_000
+log_chunk_size = 5000
+start_line = 120_000
 
 
-# If file size is too big we get _csv.Error: field larger than field limit (131072)
-# See https://stackoverflow.com/a/54517228 for more info on this.
-csv.field_size_limit(int(ct.c_ulong(-1).value // 2))
-
-
-def process_row(row: list[str]) -> list:
+def process_row(row: list[str]) -> Union[dict, bool]:
     """Process a row from the input file and return a list to write.
-    Usefull to preprocess and filter the data."""
+    return False if the row is not valid"""
     if len(row) < 4:
         return False
 
     original = json.loads(row[4])
-    json_doc = {}
+    metadata = {
+        "id": row[1],
+    }
 
     title = original.get("title")
     if title is None:
         return False
+    metadata["title"] = title
 
     description = get_description(original)
     if not description:
         return False
+    metadata["description"] = description
 
     authors = get_authors(original)
     if authors:
-        json_doc["authors"] = authors
+        metadata["authors"] = authors
 
     if original.get("subtitle"):
-        json_doc["subtitle"] = original["subtitle"]
+        metadata["subtitle"] = original["subtitle"]
 
     if original.get("subjects"):
-        json_doc["subjects"] = original["subjects"]
+        metadata["subjects"] = " ".join(original["subjects"])
 
     if original.get("first_publish_date"):
-        json_doc["first_publish_date"] = original["first_publish_date"]
+        metadata["first_publish_date"] = original["first_publish_date"]
 
     if original.get("dewey_number"):
-        json_doc["dewey_number"] = original["dewey_number"]
+        metadata["dewey_number"] = " ".join(original["dewey_number"])
 
     if original.get("covers"):
-        json_doc["covers"] = original["covers"]
+        metadata["covers"] = " ".join([str(cov) for cov in original["covers"]])
 
-    json_doc_str = json.dumps(json_doc)
-
-    return [row[1], title, description, json_doc_str]
+    return metadata
 
 
-def get_authors(row: dict) -> list[str] | bool:
+def get_authors(row: dict) -> Union[list[str], bool]:
     """Simplify the authors list to only keep the author key.
     Return False if there is no author or no key"""
     authors = row.get("authors")
@@ -90,10 +91,10 @@ def get_authors(row: dict) -> list[str] | bool:
     if len(keys) == 0:
         return False
 
-    return list(keys)
+    return " ".join(keys)
 
 
-def get_description(row: dict) -> str | bool:
+def get_description(row: dict) -> Union[str, bool]:
     """Simplify the description as a string instread of an object.
     Return False if there is no description or no value"""
     description_obj = row.get("description")
@@ -110,26 +111,48 @@ def get_description(row: dict) -> str | bool:
     return value
 
 
-with open(output_file, "w", encoding="utf-8") as outputfile:
-    csvwriter = csv.writer(
-        outputfile,
-        delimiter="\t",
-        quotechar="|",
-        quoting=csv.QUOTE_MINIMAL,
-    )
+def get_prompt(metadata: list) -> str:
+    """Assemble the metadata interesting data into a prompt"""
+    title = metadata["title"]
+    description = metadata["description"]
+
+    subjects_list = metadata.get("subjects")
+    if subjects_list:
+        subjects = " ".join(subjects_list)
+    else:
+        subjects = ""
+
+    return f"{title} {description} {subjects}"
+
+
+def main():
     i = 0  # Number of written line
+    client = chromadb.PersistentClient(path="books.chromadb")
+    collection = client.get_or_create_collection(name="books")
+    t0 = perf_counter()
     with open(input_file, "r", encoding="utf-8") as cvsinputfile:
         csvreader = csv.reader(cvsinputfile, delimiter="\t")
         for linenb, row in enumerate(csvreader):
+            if linenb < start_line:
+                continue
+
             if linenb % log_chunk_size == 0:
-                print(f"Line {linenb} processed, {i} lines written")
+                print(
+                    f"{linenb-start_line} lines processed, {i} lines written, in {perf_counter()-t0} seconds"
+                )
 
-            #  Write the row to the file if there are well formated
-            result = process_row(row)
-            if result:
-                csvwriter.writerow(result)
-                i += 1
+            metadata = process_row(row)
+            if not metadata:
+                continue
 
-print("Process complete:")
-print("    ", linenb, " works processed")
-print("    ", i, " works saved")
+            prompt = get_prompt(metadata)
+            collection.add(documents=prompt, metadatas=metadata, ids=metadata["id"])
+            i += 1
+
+    print("Process complete:")
+    print("    ", linenb, " works processed")
+    print("    ", i, " works saved")
+
+
+if __name__ == "__main__":
+    main()
