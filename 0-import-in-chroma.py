@@ -12,7 +12,6 @@ https://github.com/LibrariesHacked/openlibrary-search/blob/main/openlibrary-data
 import csv
 import json
 from ctypes import c_ulong
-from time import perf_counter
 from typing import Union
 
 import chromadb
@@ -134,7 +133,7 @@ def main():
     i = 0  # Number of written line
     client = chromadb.PersistentClient(path="books.chromadb")
     collection = client.get_or_create_collection(name="books")
-    t0 = perf_counter()
+
     with open(input_file, "r", encoding="utf-8") as cvsinputfile:
         csvreader = csv.reader(cvsinputfile, delimiter="\t")
         for linenb, row in enumerate(csvreader):
@@ -142,9 +141,7 @@ def main():
                 continue
 
             if linenb % log_chunk_size == 0:
-                print(
-                    f"{linenb-start_line} lines processed, {i} lines written, in {perf_counter()-t0} seconds"
-                )
+                print(f"{linenb} lines processed")
 
             metadata = process_row(row)
             if not metadata:
