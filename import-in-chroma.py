@@ -15,7 +15,9 @@ from ctypes import c_ulong
 from typing import Union
 
 import chromadb
+import hdbscan
 
+c = hdbscan.HDBSCAN()
 # Inputs to set
 input_file = "data/dump.txt"
 log_chunk_size = 5000
@@ -132,7 +134,7 @@ def get_prompt(metadata: list) -> str:
 def main():
     i = 0  # Number of written line
     client = chromadb.PersistentClient(path="books.chromadb")
-    collection = client.get_or_create_collection(name="books")
+    collection = client.create_collection(name="books", metadata={})
 
     with open(input_file, "r", encoding="utf-8") as cvsinputfile:
         csvreader = csv.reader(cvsinputfile, delimiter="\t")
@@ -158,3 +160,6 @@ def main():
 
 if __name__ == "__main__":
     main()
+import numpy as np
+
+np.asarray
