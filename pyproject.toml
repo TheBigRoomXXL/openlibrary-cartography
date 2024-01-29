@@ -1,0 +1,14 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+
+[project]
+name = "openlibrary-cartography"
+version = "0.0.0"
+description = "Transform Open Library dataset into a gigantic cartography"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { file = "LICENSE" }
+authors = [{ name = "Sebastien LOVERGNE" }]
+dependencies = ["chromadb~=0.4.22 "]
