@@ -3,3 +3,4 @@ data/*
 venv/**
 newvenv/**
 books.chromadb/**
+dump.txt.gz
