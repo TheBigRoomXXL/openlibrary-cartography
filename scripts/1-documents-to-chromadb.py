@@ -13,11 +13,14 @@ from time import perf_counter
 from ctypes import c_ulong
 
 import chromadb
+from chromadb.utils.embedding_functions import SentenceTransformerEmbeddingFunction
 
 # Inputs to set
 input_file = "data/books.tsv"
 log_chunk_size = 100
-
+transformer = SentenceTransformerEmbeddingFunction(
+    model_name="intfloat/multilingual-e5-small", normalize_embeddings=True
+)
 
 # If file size is too big we get _csv.Error: field larger than field limit (131072)
 # See https://stackoverflow.com/a/54517228 for more info on this.
@@ -27,32 +30,34 @@ csv.field_size_limit(int(c_ulong(-1).value // 2))
 def get_row_as_prompt(row: list[str]) -> str:
     """Assemble the document data into a prompt"""
     title = row[1]
-    description = row[2]
+    descr = row[2]
     authors = row[3]
     subtitle = row[4]
 
-    return f"{title}, {subtitle} by {authors.replace(';', ', ')}: {description}"
+    return f"passage: {title}, {subtitle} by {authors.replace(';', ', ')}: {descr}"
 
 
-def get_row_as_metadata(row:list[str])-> dict:
+def get_row_as_metadata(row: list[str]) -> dict:
     """Assemble the document into a dictionary for later reference"""
     return {
-        "title" : row[1],
-        "description" : row[2],
-        "authors" : row[3],
-        "subtitle" : row[4],
-        "covers" : row[0],
+        "title": row[1],
+        "description": row[2],
+        "authors": row[3],
+        "subtitle": row[4],
+        "covers": row[0],
     }
+
 
 def main():
     t0 = perf_counter()
     client = chromadb.PersistentClient(path="data/books.db")
     col = client.get_or_create_collection(
-        name="books-all-MiniLM-L6-v2-l2",  
+        name="books-multilingual-e5-small-l2",
+        embedding_function=transformer,
     )
+    col.query(query_texts="")
 
-    start_line = col.count() # restart where we left
-
+    start_line = col.count()  # restart where we left
 
     with open(input_file, "r", encoding="utf-8") as cvsinputfile:
         csvreader = csv.reader(cvsinputfile, delimiter="\t")

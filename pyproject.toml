@@ -11,4 +11,4 @@ readme = "README.md"
 requires-python = ">=3.11"
 license = { file = "LICENSE" }
 authors = [{ name = "Sebastien LOVERGNE" }]
-dependencies = ["chromadb~=0.4.22 "]
+dependencies = ["chromadb~=0.4.22", "sentence-transformers~=2.3.0"]
